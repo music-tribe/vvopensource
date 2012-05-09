@@ -30,11 +30,11 @@
 	if (self = [super init])	{
 		deleted = NO;
 		bound = NO;
-		socketLock = OS_SPINLOCK_INIT;
+		socketLock = [[NSLock alloc] init];
 		sock = -1;
 		port = p;
 		
-		scratchLock = OS_SPINLOCK_INIT;
+		scratchLock = [[NSLock alloc] init];
 		/*
 		threadLooper = [[VVThreadLoop alloc]
 			initWithTimeInterval:1.0/30.0
@@ -66,6 +66,14 @@
 }
 - (void) dealloc	{
 	//NSLog(@"%s",__func__);
+    if (socketLock != nil) {
+        [socketLock release];
+    }
+    socketLock = nil;
+    if (scratchLock != nil) {
+        [scratchLock release];
+    }
+    scratchLock = nil;
 	if (!deleted)
 		[self prepareToBeDeleted];
 	/*
@@ -93,10 +101,10 @@
 	if (thread!=nil && ![thread isCancelled])
 		[self stop];
 	
-	OSSpinLockLock(&socketLock);
+	[socketLock lock];
 	close(sock);
 	sock = -1;
-	OSSpinLockUnlock(&socketLock);
+	[socketLock unlock];
 	
 	deleted = YES;
 }
@@ -111,11 +119,11 @@
 
 - (BOOL) createSocket	{
 	//NSLog(@"%s",__func__);
-	OSSpinLockLock(&socketLock);
+	[socketLock lock];
 	//	create a UDP socket
 	sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (sock < 0)	{
-		OSSpinLockUnlock(&socketLock);
+		[socketLock unlock];
 		return NO;
 	}
 	//	set the socket to non-blocking
@@ -138,7 +146,7 @@
 	//	bind the socket
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)	{
 		NSLog(@"\t\terr: couldn't bind socket for OSC");
-		OSSpinLockUnlock(&socketLock);
+		[socketLock unlock];
 		return NO;
 	}
 	
@@ -147,7 +155,7 @@
 		NSLog(@"\t\terr %ld at setsockopt() in %s",errno,__func__);
 	}
 	
-	OSSpinLockUnlock(&socketLock);
+	[socketLock unlock];
 	return YES;
 }
 - (void) start	{
@@ -234,73 +242,73 @@
 			timeout.tv_sec = 0;
 			timeout.tv_usec = 1000;		//	0.01 secs = 100hz
 			
-			OSSpinLockLock(&socketLock);
+			[socketLock lock];
 			//	figure out if there are any open file descriptors
 			readyFileCount = select(sock+1, &readFileDescriptor, (fd_set *)NULL, (fd_set *)NULL, &timeout);
 			if (readyFileCount < 1)	{	//	if there was an error, bail immediately
-				OSSpinLockUnlock(&socketLock);
+				[socketLock unlock];
 				if (readyFileCount < 0)	{
 					NSLog(@"\t\terr: socket got closed unexpectedly");
 					[self stop];
 				}
-			}
-			
-			//	if the socket is one of the file descriptors, i need to get data from it
-			while (FD_ISSET(sock, &readFileDescriptor))	{
-				//NSLog(@"\t\twhile/packet ping");
-				struct sockaddr_in		addrFrom;
-				memset(&addrFrom,0,sizeof(addrFrom));
-				addrFrom.sin_family = AF_INET;
-				socklen_t				addrFromLen = sizeof(struct sockaddr_in);
-				int						numBytes;
-				BOOL					skipThisPacket = NO;
-				
-				addrFromLen = sizeof(addrFrom);
-				numBytes = (int)recvfrom(sock, buf, 65506, 0, (struct sockaddr *)&addrFrom, &addrFromLen);
-				if (numBytes < 1)	{
-					NSLog(@"\t\terr on recvfrom: %i",errno);
-					skipThisPacket = YES;
-				}
-				if (numBytes % 4)	{
-					NSLog(@"\t\terr: bytes isn't multiple of 4 in %s",__func__);
-					skipThisPacket = YES;
-				}
-				
-				if (!skipThisPacket)	{
-					buf[numBytes] = '\0';
-					
-					//	if i've reached this point, i have a buffer of the appropriate
-					//	length which needs to be parsed.  the buffer doesn't contain
-					//	multiple messages, or multiple root-level bundles
-					[self
-						parseRawBuffer:buf
-						ofMaxLength:numBytes
-						fromAddr:(unsigned int)addrFrom.sin_addr.s_addr
-						port:(unsigned short)addrFrom.sin_port];
-				}
-				
-				readyFileCount = select(sock+1, &readFileDescriptor, (fd_set *)NULL, (fd_set *)NULL, &timeout);
-			}
-			OSSpinLockUnlock(&socketLock);
-			//	if there's stuff in the scratch dict, i have to pass the info on to my delegate
-			if ([scratchArray count] > 0)	{
-				NSArray				*tmpArray = nil;
-				
-				OSSpinLockLock(&scratchLock);
-					tmpArray = [NSArray arrayWithArray:scratchArray];
-					[scratchArray removeAllObjects];
-				OSSpinLockUnlock(&scratchLock);
-				
-				[self handleScratchArray:tmpArray];
-			}
-			
-			{
-				NSAutoreleasePool		*oldPool = pool;
-				pool = nil;
-				[oldPool release];
-				pool = [[NSAutoreleasePool alloc] init];
-			}
-		}
+			} else {			
+                //	if the socket is one of the file descriptors, i need to get data from it
+                while (FD_ISSET(sock, &readFileDescriptor))	{
+                    //NSLog(@"\t\twhile/packet ping");
+                    struct sockaddr_in		addrFrom;
+                    memset(&addrFrom,0,sizeof(addrFrom));
+                    addrFrom.sin_family = AF_INET;
+                    socklen_t				addrFromLen = sizeof(struct sockaddr_in);
+                    int						numBytes;
+                    BOOL					skipThisPacket = NO;
+                    
+                    addrFromLen = sizeof(addrFrom);
+                    numBytes = (int)recvfrom(sock, buf, 65506, 0, (struct sockaddr *)&addrFrom, &addrFromLen);
+                    if (numBytes < 1)	{
+                        NSLog(@"\t\terr on recvfrom: %i",errno);
+                        skipThisPacket = YES;
+                    }
+                    if (numBytes % 4)	{
+                        NSLog(@"\t\terr: bytes isn't multiple of 4 in %s",__func__);
+                        skipThisPacket = YES;
+                    }
+                    
+                    if (!skipThisPacket)	{
+                        buf[numBytes] = '\0';
+                        
+                        //	if i've reached this point, i have a buffer of the appropriate
+                        //	length which needs to be parsed.  the buffer doesn't contain
+                        //	multiple messages, or multiple root-level bundles
+                        [self
+                            parseRawBuffer:buf
+                            ofMaxLength:numBytes
+                            fromAddr:(unsigned int)addrFrom.sin_addr.s_addr
+                            port:(unsigned short)addrFrom.sin_port];
+                    }
+                    
+                    readyFileCount = select(sock+1, &readFileDescriptor, (fd_set *)NULL, (fd_set *)NULL, &timeout);
+                }
+                [socketLock unlock];
+                //	if there's stuff in the scratch dict, i have to pass the info on to my delegate
+                if ([scratchArray count] > 0)	{
+                    NSArray				*tmpArray = nil;
+                    
+                    [scratchLock lock];
+                        tmpArray = [NSArray arrayWithArray:scratchArray];
+                        [scratchArray removeAllObjects];
+                    [scratchLock unlock];
+                    
+                    [self handleScratchArray:tmpArray];
+                }
+                
+                {
+                    NSAutoreleasePool		*oldPool = pool;
+                    pool = nil;
+                    [oldPool release];
+                    pool = [[NSAutoreleasePool alloc] init];
+                }
+            }
+        }
 	}
 	@catch (NSException *err)	{
 		NSAutoreleasePool		*oldPool = pool;
@@ -341,11 +349,11 @@
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 10000;		//	0.01 secs = 100hz
 	
-	OSSpinLockLock(&socketLock);
+	[socketLock lock];
 	//	figure out if there are any open file descriptors
 	readyFileCount = select(sock+1, &readFileDescriptor, (fd_set *)NULL, (fd_set *)NULL, &timeout);
 	if (readyFileCount < 1)	{	//	if there was an error, bail immediately
-		OSSpinLockUnlock(&socketLock);
+		[socketLock unlock];
 		if (readyFileCount < 0)	{
 			NSLog(@"\t\terr: socket got closed unexpectedly");
 			[self stop];
@@ -357,7 +365,7 @@
 		//NSLog(@"\t\twhile/packet ping");
 		//	if i'm no longer supposed to be running, kill the thread
 		if (![threadLooper running])	{
-			OSSpinLockUnlock(&socketLock);
+			[socketLock unlock];
 			return;
 		}
 		
@@ -394,15 +402,15 @@
 		
 		readyFileCount = select(sock+1, &readFileDescriptor, (fd_set *)NULL, (fd_set *)NULL, &timeout);
 	}
-	OSSpinLockUnlock(&socketLock);
+	[socketLock unlock];
 	//	if there's stuff in the scratch dict, i have to pass the info on to my delegate
 	if ([scratchArray count] > 0)	{
 		NSArray				*tmpArray = nil;
 		
-		OSSpinLockLock(&scratchLock);
+		[scratchLock lock];
 			tmpArray = [NSArray arrayWithArray:scratchArray];
 			[scratchArray removeAllObjects];
-		OSSpinLockUnlock(&scratchLock);
+		[scratchLock unlock];
 		
 		[self handleScratchArray:tmpArray];
 	}
@@ -442,10 +450,10 @@
 	if (val == nil)
 		return;
 	
-	OSSpinLockLock(&scratchLock);
+	[scratchLock lock];
 		//	add the osc path msg to the scratch array
 		[scratchArray addObject:val];
-	OSSpinLockUnlock(&scratchLock);
+	[scratchLock unlock];
 }
 
 - (void) _dispatchQuery:(OSCMessage *)m toOutPort:(OSCOutPort *)o	{
@@ -468,9 +476,9 @@
 	}
 	struct sockaddr_in	*outAddr = [o addr];
 	
-	OSSpinLockLock(&socketLock);
+	[socketLock lock];
 	numBytesSent = (int)sendto(sock,buff,bufferSize,0,(const struct sockaddr *)outAddr,sizeof(*outAddr));
-	OSSpinLockUnlock(&socketLock);
+	[socketLock unlock];
 	//[self start];
 	[pack release];
 }
@@ -487,16 +495,16 @@
 	//	stop & close my socket
 	[self stop];
 	
-	OSSpinLockLock(&socketLock);
+	[socketLock lock];
 	close(sock);
 	sock = -1;
-	OSSpinLockUnlock(&socketLock);
+	[socketLock unlock];
 	
 	//	clear out the scratch dict/array
-	OSSpinLockLock(&scratchLock);
+	[scratchLock lock];
 		if (scratchArray != nil)
 			[scratchArray removeAllObjects];
-	OSSpinLockUnlock(&scratchLock);
+	[scratchLock unlock];
 	//	set up with the new port
 	bound = NO;
 	port = n;
@@ -506,15 +514,15 @@
 		[self start];
 	else	{
 		//	close the socket
-		OSSpinLockLock(&socketLock);
+		[socketLock lock];
 		close(sock);
 		sock = -1;
-		OSSpinLockUnlock(&socketLock);
+		[socketLock unlock];
 		//	clear out the scratch dict
-		OSSpinLockLock(&scratchLock);
+		[scratchLock lock];
 			if (scratchArray != nil)
 				[scratchArray removeAllObjects];
-		OSSpinLockUnlock(&scratchLock);
+		[scratchLock unlock];
 		//	set up with the old port
 		bound = NO;
 		port = oldPort;
