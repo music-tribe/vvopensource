@@ -9,6 +9,7 @@
 
 #import "OSCOutPort.h"
 #import "OSCInPort.h"
+#import "MGOSCInPort.h"
 
 #import "OSCManager.h"
 #import "OSCZeroConfManager.h"
