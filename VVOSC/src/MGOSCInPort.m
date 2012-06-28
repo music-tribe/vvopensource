@@ -164,7 +164,7 @@
 	}
 }
 
-- (void) checkForPackets
+- (void) checkForPackets:(bool)discard
 {
     fd_set				readFileDescriptor;
     int					readyFileCount;
@@ -224,8 +224,9 @@
             NSArray				*tmpArray = nil;
             tmpArray = [NSArray arrayWithArray:scratchArray];
             [scratchArray removeAllObjects];
-            
-            [self handleScratchArray:tmpArray];
+            if(!discard) {
+                [self handleScratchArray:tmpArray];
+            }
         }
     }
 }
