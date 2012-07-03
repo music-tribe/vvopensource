@@ -194,7 +194,9 @@
             BOOL					skipThisPacket = NO;
             
             addrFromLen = sizeof(addrFrom);
-            numBytes = (int)recvfrom(sock, buf, 65506, 0, (struct sockaddr *)&addrFrom, &addrFromLen);
+            const unsigned bufSize = 65506;
+            memset(buf, '\0', bufSize);
+            numBytes = (int)recvfrom(sock, buf, bufSize, 0, (struct sockaddr *)&addrFrom, &addrFromLen);
             if (numBytes < 1)	{
                 NSLog(@"\t\terr on recvfrom: %i",errno);
                 skipThisPacket = YES;
