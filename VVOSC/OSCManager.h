@@ -106,6 +106,8 @@ Incoming OSC data is initially received by an OSCInPort; fundamentally, in ports
 - (void) removeAllOutputs;
 ///	Generates and returns an array of strings which correspond to the labels of this manager's out ports
 - (NSArray *) outPortLabelArray;
+//set now address on OSCInPort, Single treaded implementation
+-(void) setAddressOnOSCPort:(const char*)newIpAddress;
 
 ///	By default, returns [OSCInPort class]- subclass around to use different subclasses of OSCInPort
 - (id) inPortClass;

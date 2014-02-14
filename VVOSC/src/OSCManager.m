@@ -618,6 +618,11 @@
 	return returnMe;
 }
 
+-(void) setAddressOnOSCPort:(const char*)newIpAddress{
+    if(inPortArray.count != 0){
+        ((MGOSCInPort*)[inPortArray indexOfObject:0]).remoteIpAddress = newIpAddress;
+    }
+}
 
 /*===================================================================================*/
 #pragma mark --------------------- subclassable methods for customization

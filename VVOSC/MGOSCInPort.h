@@ -37,7 +37,7 @@ the documentation here only covers the basics, the header file for this class is
 	struct sockaddr_in		addr;		//	struct that describes *my* address (this is an in port)
 	unsigned short			port;		//	the port number i'm receiving from
 	unsigned char			buf[65506];	//	the socket gets data and dumps it here immediately
-	
+	struct in_addr          filterAddress; // current connected ip address
 	
 	NSString				*portLabel;		//!<the "name" of the port (added to distinguish multiple osc input ports for bonjour)
 	NSNetService			*zeroConfDest;	//	bonjour service for publishing this input's address...only active if there's a portLabel!
@@ -45,6 +45,11 @@ the documentation here only covers the basics, the header file for this class is
 	NSMutableArray			*scratchArray;	//	array of OSCMessage objects.  used for serial messaging.
 	id						delegate;	//!<my delegate gets notified of incoming messages
 }
+
+/** Ip address by which to filter incoming packets
+ *  If this string is null (default) no filtering will happen
+**/
+@property (nonatomic) const char* remoteIpAddress;
 
 //	Creates and returns an auto-released OSCInPort for the given port (or nil if the port's busy)
 + (id) createWithPort:(unsigned short)p;
