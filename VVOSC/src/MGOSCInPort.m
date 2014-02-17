@@ -205,8 +205,8 @@
                 NSLog(@"\t\terr: bytes isn't multiple of 4 in %s",__func__);
                 skipThisPacket = YES;
             }
-            if(filterAddress.s_addr != addrFrom.sin_addr.s_addr){
-                NSLog(@"packet from console not currently connected");
+            
+            if((filterAddress.s_addr != NULL) && (filterAddress.s_addr != addrFrom.sin_addr.s_addr)){
                 skipThisPacket = YES;
             }
             
@@ -337,8 +337,16 @@
 	}
 }
 
--(void) setRemoteIpAddress:(char *)remoteIpAddress{
-    inet_pton(AF_INET, remoteIpAddress, &filterAddress);
+-(void) setRemoteIpAddress:(NSString*)remoteIpAddress{
+    inet_pton(AF_INET, [remoteIpAddress UTF8String], &filterAddress);
+}
+
+-(NSString*) remoteIpAddress{
+    char str[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(filterAddress.s_addr), str, INET_ADDRSTRLEN);
+    NSString *returningString = [[NSString alloc] initWithUTF8String:str];
+    [returningString autorelease];
+    return (returningString);
 }
 
 - (NSString *) portLabel	{

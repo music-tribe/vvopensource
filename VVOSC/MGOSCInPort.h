@@ -49,7 +49,7 @@ the documentation here only covers the basics, the header file for this class is
 /** Ip address by which to filter incoming packets
  *  If this string is null (default) no filtering will happen
 **/
-@property (nonatomic) const char* remoteIpAddress;
+@property (nonatomic) NSString* remoteIpAddress;
 
 //	Creates and returns an auto-released OSCInPort for the given port (or nil if the port's busy)
 + (id) createWithPort:(unsigned short)p;
