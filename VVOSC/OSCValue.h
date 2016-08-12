@@ -22,6 +22,12 @@ When you send or receive values via OSC, you'll be working with OSCValue objects
 	void			*value;	//!<The actual value is stored here; this memory is allocated dynamically, and the size of this pointer varies depending on the type.  Whenever possible the value is stored as a basic C data type, but it falls back to NSObjects (NSString, NSColor/UIColor, etc) for more complex data types.
 }
 
+// Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+// values in Blob, to access them using  Batch console parameters and virtual console
+// parameters, support has been added for it.
+
+///	Creates & returns an auto-released instance of OSCValue with short int
++ (id) createWithShortInt:(short int)n;
 ///	Creates & returns an auto-released instance of OSCValue with an int
 + (id) createWithInt:(int)n;
 ///	Creates & returns an auto-released instance of OSCValue with a float
@@ -65,6 +71,10 @@ When you send or receive values via OSC, you'll be working with OSCValue objects
 - (id) initWithInfinity;
 - (id) initWithNSDataBlob:(NSData *)d;
 
+// Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+// values in Blob, to access them using  Batch console parameters and virtual console
+// parameters, support has been added for it.
+- (short int) shortIntValue;
 ///	Returns an int value corresponding to the instance's value
 - (int) intValue;
 ///	Returns a float value corresponding to the instance's value

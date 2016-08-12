@@ -99,6 +99,17 @@
 		return nil;
 	return [returnMe autorelease];
 }
+
+// Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+// values in Blob, to access them using  Batch console parameters and virtual console
+// parameters, support has been added for it.
++ (id) createWithShortInt:(short int)n {
+    OSCValue *returnMe = [[OSCValue alloc] initWithShortInt:n];
+    if (returnMe == nil)
+        return nil;
+    return [returnMe autorelease];
+}
+
 + (id) createWithString:(NSString *)n	{
 	OSCValue		*returnMe = [[OSCValue alloc] initWithString:n];
 	if (returnMe == nil)
@@ -187,6 +198,22 @@
 	[self release];
 	return nil;
 }
+
+// Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+// values in Blob, to access them using  Batch console parameters and virtual console
+// parameters, support has been added for it.
+- (id) initWithShortInt: (short int)n {
+    if (self = [super init])	{
+        value = malloc(sizeof(short int));
+        *(float *)value = n;
+        type = OSCValShortInt;
+        return self;
+    }
+    [self release];
+    return nil;
+
+}
+
 - (id) initWithString:(NSString *)n	{
 	if (n == nil)
 		goto BAIL;
@@ -418,6 +445,14 @@
 - (NSString *) stringValue	{
 	return (NSString *)value;
 }
+
+// Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+// values in Blob, to access them using  Batch console parameters and virtual console
+// parameters, support has been added for it.
+- (short int) shortIntValue{
+    return *(short int*)value;
+}
+
 - (struct timeval) timeValue	{
 	struct timeval		returnMe;
 	returnMe.tv_sec = (*((long long *)value)>>32);

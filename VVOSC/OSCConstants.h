@@ -21,7 +21,12 @@ typedef enum	{
 	OSCValBool = 10,	//!<BOOL
 	OSCValNil = 11,	//!<nil/NULL
 	OSCValInfinity = 12,	//!<Infinity
-	OSCValBlob = 13	//!<Blob- random binary data
+	OSCValBlob = 13,	//!<Blob- random binary data
+    
+    // Caution:- OSC does not support short integers. But since X32 console is packing 16 bit
+    // values in Blob, to access them using  Batch console parameters and virtual console
+    // parameters, support has been added for it.
+    OSCValShortInt = 14
 } OSCValueType;
 
 
