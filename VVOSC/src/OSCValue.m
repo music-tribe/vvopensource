@@ -205,7 +205,7 @@
 - (id) initWithShortInt: (short int)n {
     if (self = [super init])	{
         value = malloc(sizeof(short int));
-        *(float *)value = n;
+        *(uint16_t *)value = n;
         type = OSCValShortInt;
         return self;
     }
